@@ -135,7 +135,8 @@ namespace bz98_trn2atlas
 
                     IniFile templateTRN = new IniFile(TRNBase);
 
-                    ExistingAtlas = ini.GetSection("TextureType0").ContentEquals(templateTRN.GetSection("TextureType0")) &&
+                    ExistingAtlas = ini.GetSection("Color").ContentEquals(templateTRN.GetSection("Color")) &&
+                                    ini.GetSection("TextureType0").ContentEquals(templateTRN.GetSection("TextureType0")) &&
                                     ini.GetSection("TextureType1").ContentEquals(templateTRN.GetSection("TextureType1")) &&
                                     ini.GetSection("TextureType2").ContentEquals(templateTRN.GetSection("TextureType2")) &&
                                     ini.GetSection("TextureType3").ContentEquals(templateTRN.GetSection("TextureType3")) &&
