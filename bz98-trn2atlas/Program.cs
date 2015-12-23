@@ -18,12 +18,14 @@ namespace bz98_trn2atlas
 
         static void Main(string[] args)
         {
+            
             if (args.Length == 0)
             {
                 WriteLogLine("No TRN specified");
                 return;
             }
             string Filename = args[0];
+            
             //string Filename = @"D:\Data\Programming\Projects\bz98-trn2atlas\bz98-trn2atlas\bin\Debug\alstforc.TRN";
 
             string WorkingPath = Path.GetDirectoryName(Filename);
@@ -120,7 +122,7 @@ namespace bz98_trn2atlas
             WriteLogLine("Checking Existing Atlases");
             bool ExistingAtlas = false;
             //string TRNBase = Path.Combine(Directory.GetCurrentDirectory(), "trn", Path.ChangeExtension(PaletteFilename, "trn"));
-            string KnownTrnPath = Path.Combine(Directory.GetCurrentDirectory(), "known");
+            string KnownTrnPath = Path.Combine(System.IO.Path.GetDirectoryName(new Uri(System.Reflection.Assembly.GetExecutingAssembly().CodeBase).LocalPath), "known");
             if (Directory.Exists(KnownTrnPath))
             {
                 string[] TRNBases = Directory.GetFiles(KnownTrnPath, "*.trn");
