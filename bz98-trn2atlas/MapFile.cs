@@ -88,6 +88,8 @@ namespace BZ1GeoEditor
 
         public Color GetPixel(int x, int y)
         {
+            y = height - 1 - y;
+
             byte[] pixel = new byte[bpp];
             Array.Copy(raw, (x + y * width) * bpp, pixel, 0, bpp);
 
@@ -129,6 +131,8 @@ namespace BZ1GeoEditor
         public Color GetPixel(int x, int y, Color[] pallet)
         {
             if (type != MapType.P8) throw new NotSupportedException("MAP type does not support pallet");
+
+            y = height - 1 - y;
 
             byte pixel = raw[(x + y * width) * bpp];
 

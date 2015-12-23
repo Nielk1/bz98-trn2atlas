@@ -18,16 +18,20 @@ namespace bz98_trn2atlas
 
         static void Main(string[] args)
         {
-            
+
             if (args.Length == 0)
             {
                 WriteLogLine("No TRN specified");
                 return;
             }
-            string Filename = args[0];
-            
-            //string Filename = @"D:\Data\Programming\Projects\bz98-trn2atlas\bz98-trn2atlas\bin\Debug\alstforc.TRN";
+            args.ToList().ForEach(dr => Process(dr));
 
+            //Process(@"D:\Data\Programming\Projects\bz98-trn2atlas\bz98-trn2atlas\bin\Release\x\achilles.trn");
+
+
+        }
+        static void Process(string Filename)
+        {
             string WorkingPath = Path.GetDirectoryName(Filename);
             if (Path.GetDirectoryName(Filename).Trim().Length == 0)
             {
@@ -37,7 +41,7 @@ namespace bz98_trn2atlas
 
             try
             {
-                if (!File.Exists(Filename))
+                if (!File.Exists(Path.Combine(WorkingPath, Filename)))
                 {
                     WriteLogLine("Could not find file \"" + Filename + "\"");
                     return;
@@ -189,7 +193,7 @@ namespace bz98_trn2atlas
                 TextureNames.ForEach(dr =>
                 {
                     Image tmpImage;
-                    string imagePath = Directory.GetFiles(WorkingPath, dr + @"*.png;*.bmp", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                    string imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.TopDirectoryOnly).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
                     if (imagePath != null)
                     {
                         WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
@@ -197,7 +201,7 @@ namespace bz98_trn2atlas
                     }
                     else
                     {
-                        imagePath = Directory.GetFiles(WorkingPath, dr + @"*.png;*.bmp", SearchOption.AllDirectories).FirstOrDefault();
+                        imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.AllDirectories).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
                         if (imagePath != null)
                         {
                             WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
@@ -205,23 +209,23 @@ namespace bz98_trn2atlas
                         }
                         else
                         {
-                            imagePath = Directory.GetFiles(WorkingPath, dr + @"*.map", SearchOption.TopDirectoryOnly).FirstOrDefault();
+                            imagePath = Directory.GetFiles(WorkingPath, dr + @".map", SearchOption.TopDirectoryOnly).FirstOrDefault();
 
                             if (imagePath != null)
                             {
                                 MapFile tmp = MapFile.FromFile(imagePath);
                                 WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
-                                tmpImage = tmp.GetBitmap(Palette);
+                                tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
                             }
                             else
                             {
-                                imagePath = Directory.GetFiles(WorkingPath, dr + @"*.map", SearchOption.AllDirectories).FirstOrDefault();
+                                imagePath = Directory.GetFiles(WorkingPath, dr + @".map", SearchOption.AllDirectories).FirstOrDefault();
 
                                 if (imagePath != null)
                                 {
                                     MapFile tmp = MapFile.FromFile(imagePath);
                                     WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
-                                    tmpImage = tmp.GetBitmap(Palette);
+                                    tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
                                 }
                                 else
                                 {
@@ -246,7 +250,8 @@ namespace bz98_trn2atlas
                 int index = 0;
 
                 IEnumerable<Color> avgColors = Textures.Select(dr => getDominantColor((Bitmap)dr));
-                Color col = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
+                //Color col = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
+                Color col = avgColors.First();
 
                 WriteLogLine("Average Color: {0} {1} {2}", col.R, col.G, col.B);
 
@@ -268,6 +273,7 @@ namespace bz98_trn2atlas
             }
 
             File.WriteAllText(Path.Combine(WorkingPath, Path.ChangeExtension(Filename, ".log")), bld.ToString());
+            bld.Clear();
         }
 
         private static void WriteLogLine(string format, params object[] arg)
