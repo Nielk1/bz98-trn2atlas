@@ -32,8 +32,8 @@ namespace StumDE.Misc
     public class IniFile
     {
         private Dictionary<string, Dictionary<string, string>> _iniFileContent;
-        private readonly Regex _sectionRegex = new Regex(@"(?<=\[)(?<SectionName>[^\]]+)(?=\])");
-        private readonly Regex _keyValueRegex = new Regex(@"(?<Key>[^=]+)=(?<Value>.+)");
+        private readonly Regex _sectionRegex = new Regex(@"(?<=\[)(?<SectionName>[^\]]+)(?=\])", RegexOptions.IgnoreCase);
+        private readonly Regex _keyValueRegex = new Regex(@"(?<Key>[^=]+)=(?<Value>.+)", RegexOptions.IgnoreCase);
 
         public IniFile() : this(null) { }
 
@@ -127,7 +127,7 @@ namespace StumDE.Misc
                             if (m.Success)
                             {
                                 string key = m.Groups["Key"].Value.ToLowerInvariant().Trim();
-                                string value = m.Groups["Value"].Value;
+                                string value = m.Groups["Value"].Value.Trim();
 
                                 Dictionary<string, string> kvpList;
                                 if (_iniFileContent.ContainsKey(currentSectionName))

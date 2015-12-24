@@ -18,15 +18,15 @@ namespace bz98_trn2atlas
 
         static void Main(string[] args)
         {
-
+            
             if (args.Length == 0)
             {
                 WriteLogLine("No TRN specified");
                 return;
             }
             args.ToList().ForEach(dr => Process(dr));
-
-            //Process(@"D:\Data\Programming\Projects\bz98-trn2atlas\bz98-trn2atlas\bin\Release\x\achilles.trn");
+            
+            //Process(@"D:\Data\Programming\Projects\bz98-trn2atlas\bz98-trn2atlas\bin\Release\y\misn01.trn");
 
 
         }
@@ -67,58 +67,102 @@ namespace bz98_trn2atlas
             WriteLogLine("--------------------------------");
 
             WriteLogLine("Beginning TRN Scrape");
-            using (FileStream stream = File.OpenRead(Path.Combine(WorkingPath, Filename)))
-            {
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        if (Regex.IsMatch(line, @"^Palette[ ]*="))
-                        {
-                            PaletteFilename = line.Split('=')[1].Trim();
-                            WriteLogLine("       Palette: {0}", PaletteFilename);
-                        }
-                        if (Regex.IsMatch(line, @"^Luma[ ]*="))
-                        {
-                            Luma = line.Split('=')[1].Trim();
-                            WriteLogLine("          Luma: {0}", Luma);
-                        }
-                        if (Regex.IsMatch(line, @"^Translucency[ ]*="))
-                        {
-                            Translucency = line.Split('=')[1].Trim();
-                            WriteLogLine("  Translucency: {0}", Translucency);
-                        }
-                        if (Regex.IsMatch(line, @"^Alpha[ ]*="))
-                        {
-                            Alpha = line.Split('=')[1].Trim();
-                            WriteLogLine("         Alpha: {0}", Alpha);
-                        }
 
-                        if (Regex.IsMatch(line, @"^CapTo[0-7]_[A-D]0[ ]*="))
-                        {
-                            string name = line.Split('=')[0].Trim();
-                            string value = Path.GetFileNameWithoutExtension(line.Split('=')[1].Trim());
-                            TextureNames.Add(value);
-                            WriteLogLine("{0,14}: {1}", name, value);
-                        }
-                        if (Regex.IsMatch(line, @"^DiagonalTo[0-7]_[A-D]0[ ]*="))
-                        {
-                            string name = line.Split('=')[0].Trim();
-                            string value = Path.GetFileNameWithoutExtension(line.Split('=')[1].Trim());
-                            TextureNames.Add(value);
-                            WriteLogLine("{0,14}: {1}", name, value);
-                        }
-                        if (Regex.IsMatch(line, @"^Solid[A-D]0[ ]*="))
-                        {
-                            string name = line.Split('=')[0].Trim();
-                            string value = Path.GetFileNameWithoutExtension(line.Split('=')[1].Trim());
-                            TextureNames.Add(value);
-                            WriteLogLine("{0,14}: {1}", name, value);
-                        }
+            IniFile ini = new IniFile(Path.Combine(WorkingPath, Filename));
+            WriteLogLine("[Color]");
+            PaletteFilename = ini.GetValue("Color", "Palette");
+            WriteLogLine("       Palette: {0}", PaletteFilename);
+            Luma = ini.GetValue("Color", "Luma");
+            WriteLogLine("          Luma: {0}", Luma);
+            Translucency = ini.GetValue("Color", "Translucency");
+            WriteLogLine("  Translucency: {0}", Translucency);
+            Alpha = ini.GetValue("Color", "Alpha");
+            WriteLogLine("         Alpha: {0}", Alpha);
+
+            for(int headerIdx = 0; headerIdx < 8; headerIdx++)
+            {
+                string headerSection = string.Format("TextureType{0}", headerIdx);
+                WriteLogLine("[{0}]", headerSection);
+
+                string x1 = ProcessTrnItem(ini, headerSection, "SolidA0");
+                string x2 = ProcessTrnItem(ini, headerSection, "SolidB0");
+                string x3 = ProcessTrnItem(ini, headerSection, "SolidC0");
+                string x4 = ProcessTrnItem(ini, headerSection, "SolidD0");
+
+                if (x1 != null) TextureNames.Add(Path.GetFileNameWithoutExtension(x1));
+                if (x2 != null) TextureNames.Add(Path.GetFileNameWithoutExtension(x2));
+                if (x3 != null) TextureNames.Add(Path.GetFileNameWithoutExtension(x3));
+                if (x4 != null) TextureNames.Add(Path.GetFileNameWithoutExtension(x4));
+
+                for (char subSectionLet = 'A'; subSectionLet <= 'D'; subSectionLet++)
+                    for (int subSectionIdx = 0; subSectionIdx < 8; subSectionIdx++)
+                    {
+                        string n1 = string.Format("CapTo{0}_{1}0", subSectionIdx, subSectionLet);
+                        string m1 = ProcessTrnItem(ini, headerSection, n1);
+                        if (m1 != null) TextureNames.Add(Path.GetFileNameWithoutExtension(m1));
                     }
-                }
+
+                for (char subSectionLet = 'A'; subSectionLet <= 'D'; subSectionLet++)
+                    for (int subSectionIdx = 0; subSectionIdx < 8; subSectionIdx++)
+                    {
+                        string n1 = string.Format("DiagonalTo{0}_{1}0", subSectionIdx, subSectionLet);
+                        string m1 = ProcessTrnItem(ini, headerSection, n1);
+                        if (m1 != null) TextureNames.Add(Path.GetFileNameWithoutExtension(m1));
+                    }
             }
+
+            //using (FileStream stream = File.OpenRead(Path.Combine(WorkingPath, Filename)))
+            //{
+            //    using (StreamReader reader = new StreamReader(stream))
+            //    {
+            //        string line;
+            //        while ((line = reader.ReadLine()) != null)
+            //        {
+            //            if (Regex.IsMatch(line, @"^Palette[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                PaletteFilename = line.Split('=')[1].Trim();
+            //                WriteLogLine("       Palette: {0}", PaletteFilename);
+            //            }
+            //            if (Regex.IsMatch(line, @"^Luma[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                Luma = line.Split('=')[1].Trim();
+            //                WriteLogLine("          Luma: {0}", Luma);
+            //            }
+            //            if (Regex.IsMatch(line, @"^Translucency[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                Translucency = line.Split('=')[1].Trim();
+            //                WriteLogLine("  Translucency: {0}", Translucency);
+            //            }
+            //            if (Regex.IsMatch(line, @"^Alpha[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                Alpha = line.Split('=')[1].Trim();
+            //                WriteLogLine("         Alpha: {0}", Alpha);
+            //            }
+
+            //            if (Regex.IsMatch(line, @"^CapTo[0-7]_[A-D]0[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                string name = line.Split('=')[0].Trim();
+            //                string value = Path.GetFileNameWithoutExtension(line.Split('=')[1].Trim());
+            //                TextureNames.Add(value);
+            //                WriteLogLine("{0,14}: {1}", name, value);
+            //            }
+            //            if (Regex.IsMatch(line, @"^DiagonalTo[0-7]_[A-D]0[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                string name = line.Split('=')[0].Trim();
+            //                string value = Path.GetFileNameWithoutExtension(line.Split('=')[1].Trim());
+            //                TextureNames.Add(value);
+            //                WriteLogLine("{0,14}: {1}", name, value);
+            //            }
+            //            if (Regex.IsMatch(line, @"^Solid[A-D]0[ ]*=", RegexOptions.IgnoreCase))
+            //            {
+            //                string name = line.Split('=')[0].Trim();
+            //                string value = Path.GetFileNameWithoutExtension(line.Split('=')[1].Trim());
+            //                TextureNames.Add(value);
+            //                WriteLogLine("{0,14}: {1}", name, value);
+            //            }
+            //        }
+            //    }
+            //}
             WriteLogLine("TRN Scrape Complete");
 
             WriteLogLine("--------------------------------");
@@ -130,8 +174,6 @@ namespace bz98_trn2atlas
             if (Directory.Exists(KnownTrnPath))
             {
                 string[] TRNBases = Directory.GetFiles(KnownTrnPath, "*.trn");
-
-                IniFile ini = new IniFile(Path.Combine(WorkingPath, Filename));
 
                 foreach (string TRNBase in TRNBases)
                 {
@@ -247,7 +289,7 @@ namespace bz98_trn2atlas
 
                 Bitmap atlas = new Bitmap(size * 8, size * 8);
                 Graphics g = Graphics.FromImage(atlas);
-                int index = 0;
+                int index = 1;
 
                 IEnumerable<Color> avgColors = Textures.Select(dr => getDominantColor((Bitmap)dr));
                 //Color col = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
@@ -259,6 +301,13 @@ namespace bz98_trn2atlas
 
                 WriteLogLine("Rendering Atlas");
                 g.Clear(col);
+
+                Image defaultTile = Textures.First();
+                if (defaultTile != null)
+                {
+                    g.DrawImage(defaultTile, 0, 0, size, size);
+                }
+
                 Textures.ForEach(dr =>
                 {
                     int y = index / 8;
@@ -274,6 +323,17 @@ namespace bz98_trn2atlas
 
             File.WriteAllText(Path.Combine(WorkingPath, Path.ChangeExtension(Filename, ".log")), bld.ToString());
             bld.Clear();
+        }
+
+        private static string ProcessTrnItem(IniFile ini, string headerSection, string keyname)
+        {
+            string val = ini.GetValue(headerSection, keyname);
+            if(val != null && val.Length > 0)
+            {
+                WriteLogLine("{0,14}: {1}", keyname, val);
+                return val;
+            }
+            return null;
         }
 
         private static void WriteLogLine(string format, params object[] arg)
