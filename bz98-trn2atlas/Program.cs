@@ -15,6 +15,7 @@ namespace bz98_trn2atlas
     class Program
     {
         static StringBuilder bld = new StringBuilder();
+        static string WorkingPath;
 
         static void Main(string[] args)
         {
@@ -32,7 +33,7 @@ namespace bz98_trn2atlas
         }
         static void Process(string Filename)
         {
-            string WorkingPath = Path.GetDirectoryName(Filename);
+            WorkingPath = Path.GetDirectoryName(Filename);
             if (Path.GetDirectoryName(Filename).Trim().Length == 0)
             {
                 WorkingPath = Directory.GetCurrentDirectory();
@@ -60,6 +61,7 @@ namespace bz98_trn2atlas
             string Alpha = null;
             List<string> TextureNames = new List<string>();
             List<Image> Textures = new List<Image>();
+            List<Image> NormalTextures = new List<Image>();
 
             WriteLogLine("Working Path: \"" + WorkingPath + "\"");
             WriteLogLine("TRN file: \"" + Filename + "\"");
@@ -234,95 +236,135 @@ namespace bz98_trn2atlas
                 WriteLogLine("Finding Textures");
                 TextureNames.ForEach(dr =>
                 {
-                    Image tmpImage;
-                    string imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.TopDirectoryOnly).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
-                    if (imagePath != null)
-                    {
-                        WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
-                        tmpImage = Image.FromFile(imagePath);
-                    }
-                    else
-                    {
-                        imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.AllDirectories).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
-                        if (imagePath != null)
-                        {
-                            WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
-                            tmpImage = Image.FromFile(imagePath);
-                        }
-                        else
-                        {
-                            imagePath = Directory.GetFiles(WorkingPath, dr + @".map", SearchOption.TopDirectoryOnly).FirstOrDefault();
-
-                            if (imagePath != null)
-                            {
-                                MapFile tmp = MapFile.FromFile(imagePath);
-                                WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
-                                tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
-                            }
-                            else
-                            {
-                                imagePath = Directory.GetFiles(WorkingPath, dr + @".map", SearchOption.AllDirectories).FirstOrDefault();
-
-                                if (imagePath != null)
-                                {
-                                    MapFile tmp = MapFile.FromFile(imagePath);
-                                    WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
-                                    tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
-                                }
-                                else
-                                {
-                                    WriteLogLine("{0}:\tXXX\t[NOT_FOUND]", dr);
-                                    tmpImage = new Bitmap(256, 256);
-                                }
-                            }
-                        }
-                    }
-
-                    Textures.Add(tmpImage);
+                    Textures.Add(GetImage(dr, Palette));
+                    NormalTextures.Add(GetImage(dr + @"_N"));
                 });
                 WriteLogLine("Textures Found");
 
                 WriteLogLine("--------------------------------");
-
-                int size = Math.Max(Textures.Max(dr => dr.Width), Textures.Max(dr => dr.Height));
-                WriteLogLine("Max Size: {0}", size);
-
-                Bitmap atlas = new Bitmap(size * 8, size * 8);
-                Graphics g = Graphics.FromImage(atlas);
-                int index = 1;
-
-                IEnumerable<Color> avgColors = Textures.Select(dr => getDominantColor((Bitmap)dr));
-                //Color col = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
-                Color col = avgColors.First();
-
-                WriteLogLine("Average Color: {0} {1} {2}", col.R, col.G, col.B);
-
-                WriteLogLine("--------------------------------");
-
-                WriteLogLine("Rendering Atlas");
-                g.Clear(col);
-
-                Image defaultTile = Textures.First();
-                if (defaultTile != null)
                 {
-                    g.DrawImage(defaultTile, 0, 0, size, size);
+                    int size = Math.Max(Textures.Max(dr => dr.Width), Textures.Max(dr => dr.Height));
+                    WriteLogLine("Max Size: {0}", size);
+
+                    Bitmap atlas = new Bitmap(size * 8, size * 8);
+                    Graphics g = Graphics.FromImage(atlas);
+                    int index = 1;
+
+                    IEnumerable<Color> avgColors = Textures.Select(dr => getDominantColor((Bitmap)dr));
+                    //Color col = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
+                    Color col = avgColors.First();
+
+                    WriteLogLine("Average Color: {0} {1} {2}", col.R, col.G, col.B);
+
+                    WriteLogLine("--------------------------------");
+
+                    WriteLogLine("Rendering Atlas");
+                    g.Clear(col);
+
+                    Image defaultTile = Textures.First();
+                    if (defaultTile != null)
+                    {
+                        g.DrawImage(defaultTile, 0, 0, size, size);
+                    }
+
+                    Textures.ForEach(dr =>
+                    {
+                        int y = index / 8;
+                        int x = index % 8;
+
+                        g.DrawImage(dr, x * size, y * size, size, size);
+
+                        index++;
+                    });
+
+                    atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlas", ".png")), ImageFormat.Png);
+                    atlas.Dispose();
                 }
-
-                Textures.ForEach(dr =>
                 {
-                    int y = index / 8;
-                    int x = index % 8;
+                    int size = Math.Max(NormalTextures.Max(dr => dr.Width), NormalTextures.Max(dr => dr.Height));
+                    WriteLogLine("Max Normal Size: {0}", size);
 
-                    g.DrawImage(dr, x * size, y * size, size, size);
+                    Bitmap atlas = new Bitmap(size * 8, size * 8);
+                    Graphics g = Graphics.FromImage(atlas);
+                    int index = 1;
 
-                    index++;
-                });
+                    WriteLogLine("--------------------------------");
 
-                atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlas", ".png")), ImageFormat.Png);
+                    WriteLogLine("Rendering Normal Atlas");
+                    g.Clear(Color.FromArgb(126, 127, 255));
+
+                    Image defaultTile = NormalTextures.First();
+                    if (defaultTile != null)
+                    {
+                        g.DrawImage(defaultTile, 0, 0, size, size);
+                    }
+
+                    NormalTextures.ForEach(dr =>
+                    {
+                        int y = index / 8;
+                        int x = index % 8;
+
+                        g.DrawImage(dr, x * size, y * size, size, size);
+
+                        index++;
+                    });
+
+                    atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlasN", ".png")), ImageFormat.Png);
+                    atlas.Dispose();
+                }
             }
 
             File.WriteAllText(Path.Combine(WorkingPath, Path.ChangeExtension(Filename, ".log")), bld.ToString());
             bld.Clear();
+        }
+
+        private static Image GetImage(string dr, Color[] Palette = null)
+        {
+            Image tmpImage;
+            string imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.TopDirectoryOnly).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
+            if (imagePath != null)
+            {
+                WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
+                tmpImage = Image.FromFile(imagePath);
+            }
+            else
+            {
+                imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.AllDirectories).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
+                if (imagePath != null)
+                {
+                    WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
+                    tmpImage = Image.FromFile(imagePath);
+                }
+                else
+                {
+                    imagePath = Directory.GetFiles(WorkingPath, dr + @".map", SearchOption.TopDirectoryOnly).FirstOrDefault();
+
+                    if (imagePath != null)
+                    {
+                        MapFile tmp = MapFile.FromFile(imagePath);
+                        WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
+                        tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
+                    }
+                    else
+                    {
+                        imagePath = Directory.GetFiles(WorkingPath, dr + @".map", SearchOption.AllDirectories).FirstOrDefault();
+
+                        if (imagePath != null)
+                        {
+                            MapFile tmp = MapFile.FromFile(imagePath);
+                            WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
+                            tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
+                        }
+                        else
+                        {
+                            WriteLogLine("{0}:\tXXX\t[NOT_FOUND]", dr);
+                            tmpImage = new Bitmap(256, 256);
+                        }
+                    }
+                }
+            }
+
+            return tmpImage;
         }
 
         private static string ProcessTrnItem(IniFile ini, string headerSection, string keyname)
