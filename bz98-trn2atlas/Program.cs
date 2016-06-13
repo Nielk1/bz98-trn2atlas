@@ -22,16 +22,23 @@ namespace bz98_trn2atlas
             
             if (args.Length == 0)
             {
-                WriteLogLine("No TRN specified");
+                WriteLogLine("bz98-trn2atlas.exe trn [output]");
                 return;
             }
-            args.ToList().ForEach(dr => Process(dr));
-            
+            if (args.Length > 1)
+            {
+                Process(args[0], args[1]);
+            }
+            else
+            {
+                Process(args[0], null);
+            }
+
             //Process(@"D:\Data\Programming\Projects\bz98-trn2atlas\bz98-trn2atlas\bin\Release\y\misn01.trn");
 
 
         }
-        static void Process(string Filename)
+        static void Process(string Filename, string output)
         {
             WorkingPath = Path.GetDirectoryName(Filename);
             if (Path.GetDirectoryName(Filename).Trim().Length == 0)
@@ -259,7 +266,7 @@ namespace bz98_trn2atlas
 
                 if (loadedDiffuse > 0)
                 {
-                    StitchTextures(Filename, "Diffuse", Textures, null);
+                    StitchTextures(Filename, "Diffuse", "D", output, Textures, null);
                 }
                 else
                 {
@@ -268,7 +275,7 @@ namespace bz98_trn2atlas
                 WriteLogLine("================================");
                 if (loadedNormal > 0)
                 {
-                    StitchTextures(Filename, "Normal", NormalTextures, Color.FromArgb(126, 127, 255));
+                    StitchTextures(Filename, "Normal", "N", output, NormalTextures, Color.FromArgb(126, 127, 255));
                 }
                 else
                 {
@@ -277,7 +284,7 @@ namespace bz98_trn2atlas
                 WriteLogLine("================================");
                 if (loadedEmissive > 0)
                 {
-                    StitchTextures(Filename, "Emissive", EmissiveTextures, Color.FromArgb(0, 0, 0));
+                    StitchTextures(Filename, "Emissive", "E", output, EmissiveTextures, Color.FromArgb(0, 0, 0));
                 }
                 else
                 {
@@ -286,7 +293,7 @@ namespace bz98_trn2atlas
                 WriteLogLine("================================");
                 if (loadedSpecular > 0)
                 {
-                    StitchTextures(Filename, "Specular", SpecularTextures, Color.FromArgb(128, 128, 128));
+                    StitchTextures(Filename, "Specular", "S", output, SpecularTextures, Color.FromArgb(128, 128, 128));
                 }
                 else
                 {
@@ -298,7 +305,7 @@ namespace bz98_trn2atlas
             bld.Clear();
         }
 
-        private static void StitchTextures(string Filename, string typeForLog, List<Image> Textures, Color? fillColor)
+        private static void StitchTextures(string Filename, string typeForLog, string appendName, string output, List<Image> Textures, Color? fillColor)
         {
             int size = Math.Max(Textures.Max(dr => dr.Width), Textures.Max(dr => dr.Height));
             WriteLogLine("Max {0} Size: {1}", typeForLog, size);
@@ -343,7 +350,19 @@ namespace bz98_trn2atlas
                 index++;
             });
 
-            atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlas-" + typeForLog, ".png")), ImageFormat.Png);
+            string outputPathVal = Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlas_" + appendName, ".png"));
+            if (output != null)
+            {
+                if (Path.IsPathRooted(output))
+                {
+                    outputPathVal = Path.ChangeExtension(Path.GetFileNameWithoutExtension(output) + @"_" + appendName, ".png");
+                }
+                else
+                {
+                    outputPathVal = Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(output) + "_" + appendName, ".png"));
+                }
+            }
+            atlas.Save(outputPathVal, ImageFormat.Png);
             atlas.Dispose();
         }
 
