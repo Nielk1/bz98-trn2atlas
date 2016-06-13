@@ -62,6 +62,8 @@ namespace bz98_trn2atlas
             List<string> TextureNames = new List<string>();
             List<Image> Textures = new List<Image>();
             List<Image> NormalTextures = new List<Image>();
+            List<Image> EmissiveTextures = new List<Image>();
+            List<Image> SpecularTextures = new List<Image>();
 
             WriteLogLine("Working Path: \"" + WorkingPath + "\"");
             WriteLogLine("TRN file: \"" + Filename + "\"");
@@ -173,12 +175,15 @@ namespace bz98_trn2atlas
             bool ExistingAtlas = false;
             //string TRNBase = Path.Combine(Directory.GetCurrentDirectory(), "trn", Path.ChangeExtension(PaletteFilename, "trn"));
             string KnownTrnPath = Path.Combine(System.IO.Path.GetDirectoryName(new Uri(System.Reflection.Assembly.GetExecutingAssembly().CodeBase).LocalPath), "known");
+            WriteLogLine("Checking path \"{0}\"", KnownTrnPath);
             if (Directory.Exists(KnownTrnPath))
             {
                 string[] TRNBases = Directory.GetFiles(KnownTrnPath, "*.trn");
 
                 foreach (string TRNBase in TRNBases)
                 {
+                    WriteLogLine("Checking file \"{0}\"", TRNBase);
+
                     Dictionary<string, string> ExistingTextureNames = new Dictionary<string, string>();
 
                     IniFile templateTRN = new IniFile(TRNBase);
@@ -234,83 +239,58 @@ namespace bz98_trn2atlas
                 WriteLogLine("--------------------------------");
 
                 WriteLogLine("Finding Textures");
+                int loadedDiffuse = 0;
+                int loadedNormal = 0;
+                int loadedEmissive = 0;
+                int loadedSpecular = 0;
                 TextureNames.ForEach(dr =>
                 {
-                    Textures.Add(GetImage(dr, Palette));
-                    NormalTextures.Add(GetImage(dr + @"_N"));
+                    Textures.Add(GetImage(dr, ref loadedDiffuse, Palette));
+                    NormalTextures.Add(GetImage(dr + @"_n", ref loadedNormal));
+                    EmissiveTextures.Add(GetImage(dr + @"_e", ref loadedEmissive));
+                    SpecularTextures.Add(GetImage(dr + @"_s", ref loadedSpecular));
                 });
                 WriteLogLine("Textures Found");
+                WriteLogLine("Diffuse: {0}", loadedDiffuse);
+                WriteLogLine("Normal: {0}", loadedNormal);
+                WriteLogLine("Emissive: {0}", loadedEmissive);
+                WriteLogLine("Specular: {0}", loadedSpecular);
+                WriteLogLine("================================");
 
-                WriteLogLine("--------------------------------");
+                if (loadedDiffuse > 0)
                 {
-                    int size = Math.Max(Textures.Max(dr => dr.Width), Textures.Max(dr => dr.Height));
-                    WriteLogLine("Max Size: {0}", size);
-
-                    Bitmap atlas = new Bitmap(size * 8, size * 8);
-                    Graphics g = Graphics.FromImage(atlas);
-                    int index = 1;
-
-                    IEnumerable<Color> avgColors = Textures.Select(dr => getDominantColor((Bitmap)dr));
-                    //Color col = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
-                    Color col = avgColors.First();
-
-                    WriteLogLine("Average Color: {0} {1} {2}", col.R, col.G, col.B);
-
-                    WriteLogLine("--------------------------------");
-
-                    WriteLogLine("Rendering Atlas");
-                    g.Clear(col);
-
-                    Image defaultTile = Textures.First();
-                    if (defaultTile != null)
-                    {
-                        g.DrawImage(defaultTile, 0, 0, size, size);
-                    }
-
-                    Textures.ForEach(dr =>
-                    {
-                        int y = index / 8;
-                        int x = index % 8;
-
-                        g.DrawImage(dr, x * size, y * size, size, size);
-
-                        index++;
-                    });
-
-                    atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlas", ".png")), ImageFormat.Png);
-                    atlas.Dispose();
+                    StitchTextures(Filename, "Diffuse", Textures, null);
                 }
+                else
                 {
-                    int size = Math.Max(NormalTextures.Max(dr => dr.Width), NormalTextures.Max(dr => dr.Height));
-                    WriteLogLine("Max Normal Size: {0}", size);
-
-                    Bitmap atlas = new Bitmap(size * 8, size * 8);
-                    Graphics g = Graphics.FromImage(atlas);
-                    int index = 1;
-
-                    WriteLogLine("--------------------------------");
-
-                    WriteLogLine("Rendering Normal Atlas");
-                    g.Clear(Color.FromArgb(126, 127, 255));
-
-                    Image defaultTile = NormalTextures.First();
-                    if (defaultTile != null)
-                    {
-                        g.DrawImage(defaultTile, 0, 0, size, size);
-                    }
-
-                    NormalTextures.ForEach(dr =>
-                    {
-                        int y = index / 8;
-                        int x = index % 8;
-
-                        g.DrawImage(dr, x * size, y * size, size, size);
-
-                        index++;
-                    });
-
-                    atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlasN", ".png")), ImageFormat.Png);
-                    atlas.Dispose();
+                    WriteLogLine("Skipping Diffuse");
+                }
+                WriteLogLine("================================");
+                if (loadedNormal > 0)
+                {
+                    StitchTextures(Filename, "Normal", NormalTextures, Color.FromArgb(126, 127, 255));
+                }
+                else
+                {
+                    WriteLogLine("Skipping Normal");
+                }
+                WriteLogLine("================================");
+                if (loadedEmissive > 0)
+                {
+                    StitchTextures(Filename, "Emissive", EmissiveTextures, Color.FromArgb(0, 0, 0));
+                }
+                else
+                {
+                    WriteLogLine("Skipping Emissive");
+                }
+                WriteLogLine("================================");
+                if (loadedSpecular > 0)
+                {
+                    StitchTextures(Filename, "Specular", SpecularTextures, Color.FromArgb(128, 128, 128));
+                }
+                else
+                {
+                    WriteLogLine("Skipping Specular");
                 }
             }
 
@@ -318,7 +298,56 @@ namespace bz98_trn2atlas
             bld.Clear();
         }
 
-        private static Image GetImage(string dr, Color[] Palette = null)
+        private static void StitchTextures(string Filename, string typeForLog, List<Image> Textures, Color? fillColor)
+        {
+            int size = Math.Max(Textures.Max(dr => dr.Width), Textures.Max(dr => dr.Height));
+            WriteLogLine("Max {0} Size: {1}", typeForLog, size);
+
+            Bitmap atlas = new Bitmap(size * 8, size * 8);
+            Graphics g = Graphics.FromImage(atlas);
+            int index = 1;
+
+            if (!fillColor.HasValue)
+            {
+                IEnumerable<Color> avgColors = Textures.Select(dr => getDominantColor((Bitmap)dr));
+                //fillColor = Color.FromArgb((int)avgColors.Average(dr => dr.R), (int)avgColors.Average(dr => dr.G), (int)avgColors.Average(dr => dr.B));
+                fillColor = avgColors.First();
+
+                WriteLogLine("Dominant Color: {0} {1} {2}", fillColor.Value.R, fillColor.Value.G, fillColor.Value.B);
+            }
+            else
+            {
+                WriteLogLine("Fill Color: {0} {1} {2}", fillColor.Value.R, fillColor.Value.G, fillColor.Value.B);
+            }
+
+            WriteLogLine("--------------------------------");
+
+            WriteLogLine("Rendering {0} Atlas", typeForLog);
+            g.Clear(fillColor.Value);
+
+
+            Image defaultTile = Textures.First();
+            if (defaultTile != null)
+            {
+                g.DrawImage(defaultTile, 0, 0, size, size);
+            }
+
+            Textures.ForEach(dr =>
+
+            {
+                int y = index / 8;
+                int x = index % 8;
+
+                g.DrawImage(dr, x * size, y * size, size, size);
+
+                index++;
+            });
+
+            atlas.Save(Path.Combine(WorkingPath, Path.ChangeExtension(Path.GetFileNameWithoutExtension(Filename) + "-atlas-" + typeForLog, ".png")), ImageFormat.Png);
+            atlas.Dispose();
+        }
+
+        private static Image GetImage(string dr, ref int FoundImage, Color[] Palette = null)
         {
             Image tmpImage;
             string imagePath = Directory.GetFiles(WorkingPath, dr + @".*", SearchOption.TopDirectoryOnly).Where(s => s.ToLowerInvariant().EndsWith(".png") || s.ToLowerInvariant().EndsWith(".bmp")).FirstOrDefault();
@@ -326,6 +355,7 @@ namespace bz98_trn2atlas
             {
                 WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
                 tmpImage = Image.FromFile(imagePath);
+                FoundImage++;
             }
             else
             {
@@ -334,6 +364,7 @@ namespace bz98_trn2atlas
                 {
                     WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, Path.GetExtension(imagePath) == ".png" ? "PNG" : "BMP", imagePath);
                     tmpImage = Image.FromFile(imagePath);
+                    FoundImage++;
                 }
                 else
                 {
@@ -344,6 +375,7 @@ namespace bz98_trn2atlas
                         MapFile tmp = MapFile.FromFile(imagePath);
                         WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
                         tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
+                        FoundImage++;
                     }
                     else
                     {
@@ -354,6 +386,7 @@ namespace bz98_trn2atlas
                             MapFile tmp = MapFile.FromFile(imagePath);
                             WriteLogLine("{0}:\t{1}\t\"{2}\"", dr, tmp.IsPalletized ? "PMAP" : "MAP", imagePath);
                             tmpImage = tmp.IsPalletized ? tmp.GetBitmap(Palette) : tmp.GetBitmap();
+                            FoundImage++;
                         }
                         else
                         {
